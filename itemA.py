@@ -1,37 +1,43 @@
-from ortools.linear_solver import pywraplp
+import matplotlib.pyplot as plt
+import networkx as nx
 
-def fluxo_custo_minimo():
-    # Criar o solver
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+def desenhar_rede():
+    """
+    Desenha a rede de fluxo de custo mínimo para o problema.
+    """
+    # Criar o grafo
+    G = nx.DiGraph()
 
-    # Definir variáveis de decisão (quantidade de moeda a ser trocada entre os pares)
-    iene_para_dolar = solver.IntVar(0.0, 20000000, 'iene_para_dolar')
-    rupia_para_dolar = solver.IntVar(0.0, 5000000, 'rupia_para_dolar')
-    ringgit_para_dolar = solver.IntVar(0.0, 10000000, 'ringgit_para_dolar')
+    # Adicionar os nós
+    moedas = ['Ienes', 'Rúpias', 'Ringgits', 'Dólares']
+    G.add_nodes_from(moedas)
 
-    # Função objetivo: Maximizar o valor total em dólares
-    solver.Maximize(
-        0.008 * iene_para_dolar + 0.00016 * rupia_para_dolar + 0.25 * ringgit_para_dolar
-    )
+    # Adicionar as arestas com capacidades e custos
+    arestas = [
+        ('Ienes', 'Dólares', {'capacidade': 25000000, 'custo': 0.008}),
+        ('Rúpias', 'Dólares', {'capacidade': 105000000, 'custo': 0.00016}),
+        ('Ringgits', 'Dólares', {'capacidade': 28000000, 'custo': 0.25})
+    ]
 
-    # Restrições de quantidade de cada moeda disponível
-    solver.Add(iene_para_dolar <= 25000000)
-    solver.Add(rupia_para_dolar <= 105000000)
-    solver.Add(ringgit_para_dolar <= 28000000)
+    G.add_edges_from([(u, v, d) for u, v, d in arestas])
 
-    # Resolver o problema
-    status = solver.Solve()
+    # Configurar posições para o desenho
+    pos = nx.spring_layout(G)
 
-    # Verificar o status da solução
-    if status == pywraplp.Solver.OPTIMAL:
-        print("Solução ótima encontrada para o fluxo com limites de transação:")
-        print(f"Ienes convertidos em dólares: {iene_para_dolar.solution_value()} dólares")
-        print(f"Rúpias convertidas em dólares: {rupia_para_dolar.solution_value()} dólares")
-        print(f"Ringgits convertidos em dólares: {ringgit_para_dolar.solution_value()} dólares")
-        total_dolares = iene_para_dolar.solution_value() * 0.008 + rupia_para_dolar.solution_value() * 0.00016 + ringgit_para_dolar.solution_value() * 0.25
-        print(f"Total em dólares após todas as transações: {total_dolares}")
-    else:
-        print("Não foi possível encontrar uma solução ótima.")
+    # Desenhar nós, arestas e rótulos
+    plt.figure(figsize=(10, 8))
+    nx.draw_networkx_nodes(G, pos, node_size=700, node_color='lightblue')
+    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20, edge_color='black')
+    nx.draw_networkx_labels(G, pos, font_size=12, font_color='black')
 
-# Chamar a função para a parte (a)
-fluxo_custo_minimo()
+    # Adicionar rótulos às arestas com capacidade e custo
+    edge_labels = {(u, v): f"Cap: {d['capacidade']}, Custo: {d['custo']}" for u, v, d in arestas}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
+
+    # Título e exibição
+    plt.title("Rede de Fluxo de Custo Mínimo")
+    plt.axis('off')
+    plt.show()
+
+
+desenhar_rede()
