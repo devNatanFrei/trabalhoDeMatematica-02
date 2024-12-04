@@ -1,52 +1,36 @@
 from ortools.linear_solver import pywraplp
 
-def com_imposto_de_500():
-    # Criar o solver
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+def fluxo_custo_minimo_d():
+    # Inicializando o solver
+    solver = pywraplp.Solver.CreateSolver('GLOP')
+    
+    # Dados do problema
+    moedas = ['Iene', 'Rúpia', 'Ringgit']
+    destino = 'Dólar'
+    valores_iniciais = {'Iene': 15000000, 'Rúpia': 10500000000, 'Ringgit': 28000000}  # Valores em moedas locais
+    taxas_cambio = {'Iene': 0.008, 'Rúpia': 0.00002, 'Ringgit': 0.2}  # Taxas de câmbio ajustadas
+    limites = {'Iene': 1250000000, 'Rúpia': 5000000000, 'Ringgit': 20000000}  # Limites máximos por transação
 
-    # Custos de transação com aumento de 500% nas rúpias
-    custos = {
-        ('Iene', 'Dólar'): 0.008,  # Taxa de conversão de ienes para dólares
-        ('Rúpia', 'Dólar'): 0.00016 * 5,  # Aumento de 500% nas rúpias
-        ('Ringgit', 'Dólar'): 0.25   # Taxa de conversão de ringgits para dólares
-    }
-
-    # Definir variáveis de decisão: quanto de cada moeda será convertida para dólares
-    iene_para_dolar = solver.IntVar(0.0, solver.infinity(), 'iene_para_dolar')
-    rupia_para_dolar = solver.IntVar(0.0, solver.infinity(), 'rupia_para_dolar')
-    ringgit_para_dolar = solver.IntVar(0.0, solver.infinity(), 'ringgit_para_dolar')
-
-    # Função objetivo: Maximizar o valor total em dólares
-    solver.Maximize(
-        custos[('Iene', 'Dólar')] * iene_para_dolar + 
-        custos[('Rúpia', 'Dólar')] * rupia_para_dolar + 
-        custos[('Ringgit', 'Dólar')] * ringgit_para_dolar
-    )
-
-    # Restrições de quantidade de cada moeda disponível
-    solver.Add(iene_para_dolar <= 25000000)  # Limite de ienes (25 milhões)
-    solver.Add(rupia_para_dolar <= 105000000)  # Limite de rúpias (10,5 bilhões)
-    solver.Add(ringgit_para_dolar <= 28000000)  # Limite de ringgits (28 milhões)
-
+    # Variáveis de decisão
+    transacoes = {moeda: solver.NumVar(0, limites[moeda], f'transacao_{moeda}') for moeda in moedas}
+    
+    # Função objetivo: maximizar o valor convertido para dólares
+    solver.Maximize(sum(transacoes[moeda] * taxas_cambio[moeda] for moeda in moedas))
+    
+    # Restrições de valor disponível
+    for moeda in moedas:
+        solver.Add(transacoes[moeda] <= valores_iniciais[moeda])
+    
     # Resolver o problema
     status = solver.Solve()
-
-    # Verificar o status da solução
+    
     if status == pywraplp.Solver.OPTIMAL:
-        print("Solução ótima com imposto de 500% sobre rúpias:")
-        print(f"Ienes convertidos em dólares: {iene_para_dolar.solution_value()} dólares")
-        print(f"Rúpias convertidas em dólares: {rupia_para_dolar.solution_value()} dólares")
-        print(f"Ringgits convertidos em dólares: {ringgit_para_dolar.solution_value()} dólares")
-        
-        # Calcular o total em dólares após as transações
-        total_dolares = (
-            custos[('Iene', 'Dólar')] * iene_para_dolar.solution_value() + 
-            custos[('Rúpia', 'Dólar')] * rupia_para_dolar.solution_value() + 
-            custos[('Ringgit', 'Dólar')] * ringgit_para_dolar.solution_value()
-        )
-        print(f"Total em dólares após imposto de 500%: {total_dolares}")
+        print('Solução ótima encontrada:')
+        total_dolares = sum(transacoes[moeda].solution_value() * taxas_cambio[moeda] for moeda in moedas)
+        for moeda in moedas:
+            print(f"Converter {transacoes[moeda].solution_value()} de {moeda} para dólares.")
+        print(f"Total convertido em dólares: {total_dolares}")
     else:
-        print("Não foi possível encontrar uma solução ótima.")
+        print('Não foi possível encontrar uma solução.')
 
-# Chamar a função para a parte (d)
-com_imposto_de_500()
+fluxo_custo_minimo_d()

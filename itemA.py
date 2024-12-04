@@ -1,43 +1,34 @@
-import matplotlib.pyplot as plt
 import networkx as nx
+import matplotlib.pyplot as plt
 
 def desenhar_rede():
-    """
-    Desenha a rede de fluxo de custo mínimo para o problema.
-    """
-    # Criar o grafo
+    # Criar o grafo direcionado
     G = nx.DiGraph()
 
-    # Adicionar os nós
-    moedas = ['Ienes', 'Rúpias', 'Ringgits', 'Dólares']
-    G.add_nodes_from(moedas)
-
-    # Adicionar as arestas com capacidades e custos
-    arestas = [
-        ('Ienes', 'Dólares', {'capacidade': 25000000, 'custo': 0.008}),
-        ('Rúpias', 'Dólares', {'capacidade': 105000000, 'custo': 0.00016}),
-        ('Ringgits', 'Dólares', {'capacidade': 28000000, 'custo': 0.25})
+    
+    edges = [
+        ("Iene", "Dólar", {"custo": 0.008, "limite": 1000000}),
+        ("Rúpia", "Dólar", {"custo": 0.0001, "limite": 500000}),
+        ("Ringgit", "Dólar", {"custo": 0.2, "limite": 300000}),
     ]
 
-    G.add_edges_from([(u, v, d) for u, v, d in arestas])
+    # Adicionar arestas ao grafo
+    for edge in edges:
+        G.add_edge(edge[0], edge[1], **edge[2])
 
-    # Configurar posições para o desenho
+    # Layout para o grafo
     pos = nx.spring_layout(G)
 
-    # Desenhar nós, arestas e rótulos
-    plt.figure(figsize=(10, 8))
-    nx.draw_networkx_nodes(G, pos, node_size=700, node_color='lightblue')
-    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20, edge_color='black')
-    nx.draw_networkx_labels(G, pos, font_size=12, font_color='black')
+    # Desenhar os nós e arestas
+    nx.draw(G, pos, with_labels=True, node_color="lightblue", node_size=3000, font_size=10, font_weight="bold")
+    
+    # Adicionar rótulos com custo e limite nas arestas
+    edge_labels = {(u, v): f'Custo={d["custo"]}\nLimite={d["limite"]}' for u, v, d in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
 
-    # Adicionar rótulos às arestas com capacidade e custo
-    edge_labels = {(u, v): f"Cap: {d['capacidade']}, Custo: {d['custo']}" for u, v, d in arestas}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
-
-    # Título e exibição
+    # Mostrar o grafo
     plt.title("Rede de Fluxo de Custo Mínimo")
-    plt.axis('off')
     plt.show()
 
-
+# Chamar a função para desenhar a rede
 desenhar_rede()

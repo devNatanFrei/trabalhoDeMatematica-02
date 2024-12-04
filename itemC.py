@@ -1,45 +1,35 @@
 from ortools.linear_solver import pywraplp
 
-def sem_limites_de_transacao():
-    # Criar o solver
-    solver = pywraplp.Solver.CreateSolver('SCIP')
+def fluxo_custo_minimo_c():
+    # Inicializando o solver
+    solver = pywraplp.Solver.CreateSolver('GLOP')
+    
+    # Dados do problema
+    moedas = ['Iene', 'Rúpia', 'Ringgit']
+    destino = 'Dólar'
+    valores_iniciais = {'Iene': 15000000, 'Rúpia': 10500000000, 'Ringgit': 28000000}  # Valores em moedas locais
+    taxas_cambio = {'Iene': 0.008, 'Rúpia': 0.0001, 'Ringgit': 0.2}  # Taxas de câmbio para dólares
 
-    # Definir variáveis de decisão: quanto de cada moeda vai ser convertida para dólares
-    iene_para_dolar = solver.IntVar(0.0, solver.infinity(), 'iene_para_dolar')  # Sem limite superior
-    rupia_para_dolar = solver.IntVar(0.0, solver.infinity(), 'rupia_para_dolar')  # Sem limite superior
-    ringgit_para_dolar = solver.IntVar(0.0, solver.infinity(), 'ringgit_para_dolar')  # Sem limite superior
-
-    # Função objetivo: Maximizar o valor total em dólares
-    # Taxas de conversão de acordo com as tabelas fornecidas
-    solver.Maximize(
-        0.008 * iene_para_dolar + 0.00016 * rupia_para_dolar + 0.25 * ringgit_para_dolar
-    )
-
-    # Restrições de quantidade de cada moeda disponível
-    # Não há limite de transação aqui, apenas a quantidade disponível de cada moeda
-    solver.Add(iene_para_dolar <= 15000000)  # Limite de ienes (15 milhões)
-    solver.Add(rupia_para_dolar <= 105000000)  # Limite de rúpias (10,5 bilhões)
-    solver.Add(ringgit_para_dolar <= 28000000)  # Limite de ringgits (28 milhões)
-
+    # Variáveis de decisão
+    transacoes = {moeda: solver.NumVar(0, solver.infinity(), f'transacao_{moeda}') for moeda in moedas}
+    
+    # Função objetivo: maximizar o valor convertido para dólares
+    solver.Maximize(sum(transacoes[moeda] * taxas_cambio[moeda] for moeda in moedas))
+    
+    # Restrições de valor disponível
+    for moeda in moedas:
+        solver.Add(transacoes[moeda] <= valores_iniciais[moeda])
+    
     # Resolver o problema
     status = solver.Solve()
-
-    # Verificar o status da solução
+    
     if status == pywraplp.Solver.OPTIMAL:
-        print("Solução ótima encontrada sem limites de transação:")
-        print(f"Ienes convertidos em dólares: {iene_para_dolar.solution_value()} dólares")
-        print(f"Rúpias convertidas em dólares: {rupia_para_dolar.solution_value()} dólares")
-        print(f"Ringgits convertidos em dólares: {ringgit_para_dolar.solution_value()} dólares")
-        
-        # Calcular o total em dólares após as transações
-        total_dolares = (
-            0.008 * iene_para_dolar.solution_value() + 
-            0.00016 * rupia_para_dolar.solution_value() + 
-            0.25 * ringgit_para_dolar.solution_value()
-        )
-        print(f"Total em dólares sem limites de transação: {total_dolares}")
+        print('Solução ótima encontrada:')
+        total_dolares = sum(transacoes[moeda].solution_value() * taxas_cambio[moeda] for moeda in moedas)
+        for moeda in moedas:
+            print(f"Converter {transacoes[moeda].solution_value()} de {moeda} para dólares.")
+        print(f"Total convertido em dólares: {total_dolares}")
     else:
-        print("Não foi possível encontrar uma solução ótima.")
+        print('Não foi possível encontrar uma solução.')
 
-# Chamar a função para a parte (c)
-sem_limites_de_transacao()
+fluxo_custo_minimo_c()
