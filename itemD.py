@@ -1,90 +1,77 @@
 from ortools.linear_solver import pywraplp
 
-# Custos de conversão entre as moedas
-taxas_cambio = [
-    [0.0000, 0.0050, 0.0050, 0.0040, 0.0040, 0.0040, 0.0025, 0.0050],  # Iene
-    [0.0050, 0.0000, 0.0070, 0.0050, 0.0030, 0.0030, 0.0075, 0.0075],  # Rúpia
+# Conversion costs between currencies
+exchange_rates = [
+    [0.0000, 0.0050, 0.0050, 0.0040, 0.0040, 0.0040, 0.0025, 0.0050],  # Yen
+    [0.0050, 0.0000, 0.0070, 0.0050, 0.0030, 0.0030, 0.0075, 0.0075],  # Rupee
     [0.0050, 0.0070, 0.0000, 0.0070, 0.0070, 0.0040, 0.0045, 0.0050],  # Ringgit
-    [0.0040, 0.0050, 0.0070, 0.0000, 0.0005, 0.0010, 0.0010, 0.0010],  # Dólar Norte Americano
-    [0.0040, 0.0030, 0.0070, 0.0005, 0.0000, 0.0020, 0.0010, 0.0010],  # Dólar Canadense
+    [0.0040, 0.0050, 0.0070, 0.0000, 0.0005, 0.0010, 0.0010, 0.0010],  # US Dollar
+    [0.0040, 0.0030, 0.0070, 0.0005, 0.0000, 0.0020, 0.0010, 0.0010],  # Canadian Dollar
     [0.0040, 0.0030, 0.0040, 0.0010, 0.0020, 0.0000, 0.0005, 0.0050],  # Euro
-    [0.0025, 0.0075, 0.0045, 0.0010, 0.0010, 0.0005, 0.0000, 0.0050],  # Libra
+    [0.0025, 0.0075, 0.0045, 0.0010, 0.0010, 0.0005, 0.0000, 0.0050],  # Pound
     [0.0050, 0.0075, 0.0050, 0.0010, 0.0010, 0.0050, 0.0050, 0.0000]   # Peso
 ]
 
-# Função para aplicar a taxa de aumento ao custo da moeda
-def aplicar_taxa(indice, taxa):
-    for i in range(len(taxas_cambio)):
-        taxas_cambio[indice][i] *= taxa / 100
-
-def Calcular():
-    # Criação do solver utilizando o "GLOP" para problemas de otimização reais
+def Calculate():
+    # Create the solver using "GLOP" for real optimization problems
     solver = pywraplp.Solver.CreateSolver("GLOP")
     if not solver:
         return None
     
-    n = len(taxas_cambio)
-    
-    # Definição de variáveis
-    x = []
-    for i in range(n):
-        linha = []
-        for j in range(n):
-            variavel = solver.NumVar(0, solver.infinity(), f"x{i}{j}")
-            linha.append(variavel)
-        x.append(linha)
-    
-    # Aumentando o custo da Rúpia em 500%
-    aplicar_taxa(1, 500)
-    
-    # Função objetivo de minimização
-    objetivo = solver.Sum(
-        taxas_cambio[i][j] * x[i][j] for i in range(n) for j in range(n)
-    )
-    solver.Minimize(objetivo)
-    
-    # Condições:
-    # Fontes
-    solver.Add(x[0][3] + x[0][4] + x[0][5] + x[0][6] + x[0][7] - 9.6 == 0)  # Iene
-    solver.Add(x[1][3] + x[1][4] + x[1][5] + x[1][6] + x[1][7] - 1.68 == 0)  # Rúpia
-    solver.Add(x[2][3] + x[2][4] + x[2][5] + x[2][6] + x[2][7] - 5.6 == 0)  # Ringgit
-    
-    # Sumidouro
-    solver.Add(16.88 - x[0][3] - x[1][3] - x[2][3] - x[4][3] - x[5][3] - x[6][3] - x[7][3] == 0)
-    
-    # Intermediário
-    solver.Add(x[4][3] + x[4][5] + x[4][6] + x[4][7] - x[0][4] - x[1][4] - x[2][4] - x[5][4] - x[6][4] - x[7][4] == 0)
-    solver.Add(x[5][3] + x[5][4] + x[5][6] + x[5][7] - x[0][5] - x[1][5] - x[2][5] - x[4][5] - x[6][5] - x[7][5] == 0)
-    solver.Add(x[6][3] + x[6][4] + x[6][5] + x[6][7] - x[0][6] - x[1][6] - x[2][6] - x[4][6] - x[5][6] - x[7][6] == 0)
-    solver.Add(x[7][3] + x[7][4] + x[7][5] + x[7][6] - x[0][7] - x[1][7] - x[2][7] - x[4][7] - x[5][7] - x[6][7] == 0)
-    
-    # Resolvendo o problema
-    viavel = solver.Solve()
-    
-    if viavel == pywraplp.Solver.OPTIMAL:
-        print("Solução encontrada:")
-        print(f"Função Objetivo = {solver.Objective().Value():0.4f} milhões de U$")
-        
-        # Exibindo as transações de cada moeda
-        moedas = ["Iene", "Rúpia", "Ringgit", "Dólar Norte Americano", "Dólar Canadense", "Euro", "Libra", "Peso"]
-        
-        for i in range(3):  # Para as 3 primeiras moedas (Iene, Rúpia, Ringgit)
-            print(f"\nTransações de {moedas[i]} (em Milhões de U$):")
-            for j in range(n):
-                valor_transacao = x[i][j].solution_value()
-                if valor_transacao > 0:  # Exibe transações com valor positivo
-                    print(f"{moedas[i]} para {moedas[j]}: {valor_transacao:.2f}")
-            print("-" * 50)
-        
-        # Exibindo transações intermediárias
-        print("\nTransações Intermediárias (em Milhões de U$):")
-        print(f"Dólar Canadense para Dólar Norte Americano: {(x[4][3].solution_value()):.2f}")
-        print(f"Euro para Dólar Norte Americano: {(x[5][3].solution_value()):.2f}")
-        print(f"Libra para Dólar Norte Americano: {(x[6][3].solution_value()):.2f}")
-        print(f"Peso para Dólar Norte Americano: {(x[7][3].solution_value()):.2f}")
-    
-    else:
-        print("Solução inviável")
+    n = len(exchange_rates)
 
-# Chamada da função Calcular
-Calcular()
+    # Function to apply a rate increase to the cost of a currency
+    def apply_rate(index, rate):
+        for i in range(len(exchange_rates)):
+            exchange_rates[index][i] *= rate / 100
+
+    # Define variables
+    transactions = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            variable = solver.NumVar(0, solver.infinity(), f"x{i}{j}")
+            row.append(variable)
+        transactions.append(row)
+
+    # Increase the Rupee cost by 500%
+    apply_rate(1, 500)
+    
+    # Objective function for minimization
+    objective = solver.Sum(
+        exchange_rates[i][j] * transactions[i][j] for i in range(n) for j in range(n)
+    )
+    solver.Minimize(objective)
+    
+    # Conditions:
+    # Sources
+    solver.Add(transactions[0][3] + transactions[0][4] + transactions[0][5] + transactions[0][6] + transactions[0][7] - 9.6 == 0)  # Yen
+    solver.Add(transactions[1][3] + transactions[1][4] + transactions[1][5] + transactions[1][6] + transactions[1][7] - 1.68 == 0)  # Rupee
+    solver.Add(transactions[2][3] + transactions[2][4] + transactions[2][5] + transactions[2][6] + transactions[2][7] - 5.6 == 0)  # Ringgit
+    
+    # Sink
+    solver.Add(16.88 - transactions[0][3] - transactions[1][3] - transactions[2][3] - transactions[4][3] - transactions[5][3] - transactions[6][3] - transactions[7][3] == 0)
+    
+    # Intermediate
+    solver.Add(transactions[4][3] + transactions[4][5] + transactions[4][6] + transactions[4][7] - transactions[0][4] - transactions[1][4] - transactions[2][4] - transactions[5][4] - transactions[6][4] - transactions[7][4] == 0)
+    solver.Add(transactions[5][3] + transactions[5][4] + transactions[5][6] + transactions[5][7] - transactions[0][5] - transactions[1][5] - transactions[2][5] - transactions[4][5] - transactions[6][5] - transactions[7][5] == 0)
+    solver.Add(transactions[6][3] + transactions[6][4] + transactions[6][5] + transactions[6][7] - transactions[0][6] - transactions[1][6] - transactions[2][6] - transactions[4][6] - transactions[5][6] - transactions[7][6] == 0)
+    solver.Add(transactions[7][3] + transactions[7][4] + transactions[7][5] + transactions[7][6] - transactions[0][7] - transactions[1][7] - transactions[2][7] - transactions[4][7] - transactions[5][7] - transactions[6][7] == 0)
+    
+    # Solve the problem
+    status = solver.Solve()
+    if status == pywraplp.Solver.OPTIMAL:
+        print("Optimal solution found:")
+        print(f"Total transaction cost: {solver.Objective().Value():.4f} million")
+
+        currency_names = ["Yen", "Rupee", "Ringgit", "US Dollar", "Canadian Dollar", "Euro", "Pound", "Peso"]
+        for i in range(n):
+            for j in range(n):
+                amount = transactions[i][j].solution_value()
+                if amount > 0:
+                    print(f"{currency_names[i]} -> {currency_names[j]}: {amount:.2f} million")
+    else:
+        print("No feasible solution or error during optimization.")
+
+# Call the Calculate function
+Calculate()
