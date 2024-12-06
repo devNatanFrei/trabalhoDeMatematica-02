@@ -1,8 +1,7 @@
 from ortools.linear_solver import pywraplp
 
-
 def optimize_transactions():
-    # Exchange costs (cost matrix) and transaction limits
+    # Custos de transação (matriz de custos)
     exchange_costs = [
         [0.0000, 0.0050, 0.0050, 0.0040, 0.0040, 0.0040, 0.0025, 0.0050],  # Yen
         [0.0050, 0.0000, 0.0070, 0.0050, 0.0030, 0.0030, 0.0075, 0.0075],  # Rupee
@@ -14,20 +13,14 @@ def optimize_transactions():
         [0.0050, 0.0075, 0.0050, 0.0010, 0.0010, 0.0050, 0.0050, 0.0000],  # Peso
     ]
 
-    transaction_limits = [
-        [0, 5, 5, 2, 2, 2, 2, 4],  # Yen
-        [5, 0, 2, 0.2, 0.2, 1, 0.5, 0.2],  # Rupee
-        [3, 4.5, 0, 1.5, 1.5, 2.5, 1, 1],  # Ringgit
-    ]
-
-    # Initializing the solver
+    # Inicializando o solver
     solver = pywraplp.Solver.CreateSolver("GLOP")
     if not solver:
         return None
 
     num_currencies = len(exchange_costs)
 
-    # Creating decision variables for transactions
+    # Criando variáveis de decisão para as transações
     transactions = []
     for i in range(num_currencies):
         row = []
@@ -35,7 +28,7 @@ def optimize_transactions():
             row.append(solver.NumVar(0, solver.infinity(), f"trans_{i}_{j}"))
         transactions.append(row)
 
-    # Setting the objective: minimize total transaction cost
+    # Função objetivo: minimizar o custo total da transação
     total_cost = solver.Sum(
         exchange_costs[i][j] * transactions[i][j]
         for i in range(num_currencies)
@@ -43,27 +36,22 @@ def optimize_transactions():
     )
     solver.Minimize(total_cost)
 
-    # Adding maximum transaction limits
-    for i in range(len(transaction_limits)):
-        for j in range(num_currencies):
-            solver.Add(transactions[i][j] <= transaction_limits[i][j])
-
-    # Adding initial balance constraints for source currencies
+    # Adicionando as restrições de transações de fontes
     solver.Add(transactions[0][3] + transactions[0][4] + transactions[0][5] + transactions[0][6] + transactions[0][7] == 9.6)  # Yen
     solver.Add(transactions[1][3] + transactions[1][4] + transactions[1][5] + transactions[1][6] + transactions[1][7] == 1.68)  # Rupee
     solver.Add(transactions[2][3] + transactions[2][4] + transactions[2][5] + transactions[2][6] + transactions[2][7] == 5.6)  # Ringgit
 
-    # Adding balance constraints for intermediate currencies
-    for idx in range(4, 8):  # From Canadian Dollar to Peso
-        outgoing = solver.Sum(transactions[idx][j] for j in range(num_currencies))
-        incoming = solver.Sum(transactions[i][idx] for i in range(num_currencies))
+    # Adicionando as restrições de equilíbrio de transações
+    for i in range(4, 8):  # De Dólar Canadense a Peso
+        outgoing = solver.Sum(transactions[i][j] for j in range(num_currencies))
+        incoming = solver.Sum(transactions[x][i] for x in range(num_currencies))
         solver.Add(outgoing == incoming)
 
-    # Solving the optimization problem
+    # Resolvendo o problema de otimização
     status = solver.Solve()
     if status == pywraplp.Solver.OPTIMAL:
         print("Optimal solution found:")
-        print(f"Total transaction cost: {solver.Objective().Value():.4f} million")
+        print(f"Total transaction cost: {solver.Objective().Value():.4f} million USD")
 
         currency_names = [
             "Yen", "Rupee", "Ringgit", "US Dollar",
@@ -77,6 +65,5 @@ def optimize_transactions():
     else:
         print("No feasible solution or error during optimization.")
 
-
-# Running the function
+# Executando a função
 optimize_transactions()
